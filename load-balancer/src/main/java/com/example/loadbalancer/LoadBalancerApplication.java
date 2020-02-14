@@ -10,6 +10,7 @@ import org.springframework.cloud.client.ServiceInstance;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.cloud.client.loadbalancer.LoadBalancerClient;
 import org.springframework.cloud.client.loadbalancer.reactive.ReactiveLoadBalancer;
+import org.springframework.cloud.client.loadbalancer.reactive.ReactorLoadBalancerExchangeFilterFunction;
 import org.springframework.cloud.client.loadbalancer.reactive.Request;
 import org.springframework.cloud.client.loadbalancer.reactive.Response;
 import org.springframework.cloud.loadbalancer.blocking.client.BlockingLoadBalancerClient;
@@ -17,6 +18,8 @@ import org.springframework.cloud.loadbalancer.core.ReactorServiceInstanceLoadBal
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 
@@ -37,10 +40,10 @@ public class LoadBalancerApplication {
 	}
 
 	@Bean
-	@LoadBalanced
 	WebClient client(WebClient.Builder builder) {
 		return builder.build();
 	}
+
 
 	public static void main(String[] args) {
 		SpringApplication.run(LoadBalancerApplication.class, args);
@@ -52,13 +55,16 @@ public class LoadBalancerApplication {
 class ReactiveLoadBalancerFactoryRunner {
 
 	ReactiveLoadBalancerFactoryRunner(ReactiveLoadBalancer.Factory<ServiceInstance> loadBalancerFactory) {
+		WebClient webClient = WebClient.builder().build();
 		ReactiveLoadBalancer<ServiceInstance> loadBalancer = loadBalancerFactory.getInstance("api");
-		Publisher<Response<ServiceInstance>> choose = loadBalancer.choose();
-		Flux<Response<ServiceInstance>> responseOfServiceInstance = Flux.from(choose);
-		responseOfServiceInstance.subscribe(serviceInstanceResponse -> {
-			ServiceInstance server = serviceInstanceResponse.getServer();
-			log(getClass(), server.getHost() + ':' + server.getPort());
-		});
+		Flux<Response<ServiceInstance>> choose = Flux.from(loadBalancer.choose());
+		choose
+			.map(serviceInstanceResponse -> {
+				ServiceInstance server = serviceInstanceResponse.getServer();
+				return "http://" + server.getHost() + ':' + server.getPort() + "/greetings";
+			})
+			.flatMap(url -> webClient.get().uri(url).retrieve().bodyToFlux(String.class))
+			.subscribe(response -> log(getClass(), response));
 
 	}
 }
@@ -67,9 +73,11 @@ class ReactiveLoadBalancerFactoryRunner {
 @Component
 class WebClientRunner {
 
-	WebClientRunner(WebClient client) {
 
-		client
+	WebClientRunner(ReactiveLoadBalancer.Factory<ServiceInstance> loadBalancerFactory) {
+		ExchangeFilterFunction exchangeFilterFunction = new ReactorLoadBalancerExchangeFilterFunction(loadBalancerFactory);
+		WebClient webClient = WebClient.builder().filter(exchangeFilterFunction).build();
+		webClient
 			.get()
 			.uri("http://api/greetings")
 			.retrieve()
@@ -84,8 +92,9 @@ class WebClientRunner {
 abstract class LogUtils {
 
 	public static void log(Class<?> clz, String msg) {
-		log.info("--------------------------------------");
-		log.info(clz.getName() + " : " + msg);
-		log.info("--------------------------------------");
+		var line = "------------------------------------------------------------------------------------------------------------";
+		var lines = new String[]{System.lineSeparator(), line, clz.getName() + " : " + msg, line, System.lineSeparator()};
+		var toPrint = StringUtils.arrayToDelimitedString(lines, System.lineSeparator());
+		log.info(toPrint);
 	}
 }
