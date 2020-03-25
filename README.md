@@ -1,4 +1,6 @@
-# Spring Tips: Spring Cloud Loadbalancer 
+speaker: [Josh Long (@starbuxman)](http://twitter.com/starbuxman)
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/FDeOoKRKgkM" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 Hi, Spring fans! Welcome to another installment of Spring Tips! In this installment, we're going to look at a new feature in Spring Cloud, Spring Cloud Loadbalancer. Spring Cloud Loadbalancer is a generic abstraction that can do the work that we used to do with Netflix's Ribbon project. Spring Cloud still supports Netflix Ribbon, but Netflix Ribbons days are numbered, like so much else of the Netflix microservices stack, so we've provided an abstraction to support an alternative. 
 
@@ -39,7 +41,6 @@ public class EurekaServiceApplication {
 ```
 
 You can run that now. It'll be available on port `8761` and other clients will connect to that port by default. 
-
 
 ## A Simple API 
 Let's now turn to the API. Our API is as trivial as these things come. We just want an endpoint to which our client can issue requests. 
@@ -251,4 +252,4 @@ The load balancer uses round-robin load balancing, where it randomly distributes
 
 ### Next Steps 
 
-Int his Spring Tip installment, we've only begun to scratch the surface of the load balancing power, but we have already achieved immense flexibility and conciseness. 
+In this Spring Tip installment, we've only begun to scratch the surface of the load balancing abstraction, but we have already achieved immense flexibility and conciseness. If you're further interested in customizing the load balancer, you might look into the `@LoadBalancedClient` annotation. 
