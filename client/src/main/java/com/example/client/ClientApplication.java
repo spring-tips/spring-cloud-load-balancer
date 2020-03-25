@@ -74,8 +74,8 @@ class WebClientRunner {
 	}
 }
 
-@Component
 @Log4j2
+@Component
 class ReactiveLoadBalancerFactoryRunner {
 
 	ReactiveLoadBalancerFactoryRunner(ReactiveLoadBalancer.Factory<ServiceInstance> serviceInstanceFactory) {
